@@ -4,6 +4,7 @@ This module provides functionality to generate Markdown reports from
 ConsensusResult objects.
 """
 from datetime import datetime
+import re
 from typing import Dict, List, Optional
 
 from magi.models import (
@@ -210,6 +211,18 @@ def generate_filename(prompt: str, timestamp: Optional[datetime] = None) -> str:
     """
     if timestamp is None:
         timestamp = datetime.now()
-    
+
+    # Create slug from prompt
+    # 1. Lowercase and normalize
+    slug = prompt.lower().strip()
+    # 2. Replace non-alphanumeric with hyphens
+    slug = re.sub(r'[^a-z0-9]+', '-', slug).strip('-')
+    # 3. Truncate
+    if len(slug) > 50:
+        slug = slug[:50].rstrip('-')
+        
     date_str = timestamp.strftime("%Y%m%d-%H%M%S")
+    
+    if slug:
+        return f"magi-report-{slug}-{date_str}.md"
     return f"magi-report-{date_str}.md"

@@ -318,6 +318,13 @@ def run_app() -> None:
                 )
                 stream_placeholders[persona] = st.empty()
         
+        # Clear previous streaming state
+        for persona in PERSONA_ORDER:
+            key = f"stream_{persona.value}"
+            if key in st.session_state:
+                del st.session_state[key]
+            stream_placeholders[persona].empty()
+
         # Create streaming adapter
         def on_chunk(chunk):
             """Handle streaming chunk - update placeholders"""

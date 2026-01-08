@@ -218,3 +218,24 @@ class TestGenerateFilename:
         today = datetime.now().strftime("%Y%m%d")
         assert today in filename1
         assert today in filename2
+
+    def test_filename_includes_slug(self):
+        """generate_filename() should include prompt slug"""
+        filename = generate_filename("Hello World")
+        assert "hello-world" in filename
+
+    def test_filename_sanitizes_slug(self):
+        """generate_filename() should sanitize prompt for slug"""
+        filename = generate_filename("Hello @ World!")
+        assert "hello-world" in filename
+        assert "@" not in filename
+        assert "!" not in filename
+
+    def test_filename_truncates_long_slug(self):
+        """generate_filename() should truncate long slugs"""
+        long_prompt = "a" * 100
+        filename = generate_filename(long_prompt)
+        # 50 chars limit
+        assert "a" * 50 in filename
+        assert "a" * 51 not in filename
+
