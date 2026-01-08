@@ -9,7 +9,7 @@ from typing import Dict, Optional, TYPE_CHECKING
 import streamlit as st
 
 from magi.errors import MagiException
-from magi.models import Decision, DebateRound, PersonaType, ThinkingOutput, VoteOutput
+from magi.models import Attachment, Decision, DebateRound, PersonaType, ThinkingOutput, VoteOutput
 
 if TYPE_CHECKING:
     from magi.config import Config
@@ -69,7 +69,7 @@ def _execute_async(
     engine: "ConsensusEngine",
     prompt: str,
     adapter: Optional["StreamlitStreamingAdapter"] = None,
-    attachments: list = None,
+    attachments: Optional[list[Attachment]] = None,
 ) -> "ConsensusResult":
     """Execute consensus engine asynchronously
 
@@ -321,7 +321,7 @@ def run_app() -> None:
     MAX_FILE_SIZE_MB = 10
     attachments = None
     if uploaded_files:
-        from magi.models import Attachment
+
         
         attachments = []
         for f in uploaded_files:
