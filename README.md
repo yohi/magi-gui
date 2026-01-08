@@ -64,7 +64,7 @@ GUI のサイドバーで以下の設定が可能です:
 
 ## プロジェクト構成 (Project Structure)
 
-```
+```text
 magi-gui/
 ├── pyproject.toml          # プロジェクト設定
 ├── README.md               # このファイル
