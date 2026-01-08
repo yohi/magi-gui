@@ -69,12 +69,20 @@ def _execute_async(
     engine: "ConsensusEngine",
     prompt: str,
     adapter: Optional["StreamlitStreamingAdapter"] = None,
+    attachments: list = None,
 ) -> "ConsensusResult":
-    """Execute consensus engine asynchronously"""
+    """Execute consensus engine asynchronously
+
+    Args:
+        engine: ConsensusEngine instance
+        prompt: User prompt
+        adapter: Optional streaming adapter
+        attachments: Optional list of Attachment objects for multimodal input
+    """
 
     async def _run():
         try:
-            return await engine.execute(prompt)
+            return await engine.execute(prompt, attachments=attachments)
         finally:
             if adapter:
                 await adapter.close()
@@ -282,6 +290,16 @@ def run_app() -> None:
             key="streaming_checkbox",
             help="Display debate output in real-time as it's generated",
         )
+        
+        # File uploader for multimodal input
+        st.markdown("<div class='sidebar-subtitle'>Attachments</div>", unsafe_allow_html=True)
+        uploaded_files = st.file_uploader(
+            "Attach files (PDF, Images)",
+            accept_multiple_files=True,
+            type=["pdf", "png", "jpg", "jpeg", "gif", "webp"],
+            key="file_uploader",
+            help="Attach PDF or image files for multimodal analysis (max 10MB each)",
+        )
 
     # Main input area
     st.markdown("<div class='section-title'>Input</div>", unsafe_allow_html=True)
@@ -298,6 +316,28 @@ def run_app() -> None:
     if not prompt.strip():
         st.error("Please enter a prompt to run.")
         return
+
+    # File size validation and Attachment conversion
+    MAX_FILE_SIZE_MB = 10
+    attachments = None
+    if uploaded_files:
+        from magi.models import Attachment
+        
+        attachments = []
+        for f in uploaded_files:
+            if f.size > MAX_FILE_SIZE_MB * 1024 * 1024:
+                st.error(f"File '{f.name}' exceeds {MAX_FILE_SIZE_MB}MB limit.")
+                return
+            attachments.append(
+                Attachment(
+                    mime_type=f.type,
+                    data=f.read(),
+                    filename=f.name,
+                )
+            )
+        # Reset file pointers after reading
+        for f in uploaded_files:
+            f.seek(0)
 
     # Set environment variables for Gemini
     endpoint = "https://generativelanguage.googleapis.com"
@@ -372,7 +412,7 @@ def run_app() -> None:
     with st.spinner("Running..."):
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_execute_async, engine, prompt, adapter)
+                future = executor.submit(_execute_async, engine, prompt, adapter, attachments)
                 result = future.result()
         except MagiException as exc:
             status_placeholder.empty()
