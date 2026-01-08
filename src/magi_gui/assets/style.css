@@ -1,0 +1,205 @@
+/* MAGI System Theme */
+
+:root {
+  --magi-bg: #0e1117;
+  --magi-bg-alt: #111923;
+  --magi-panel: #151d26;
+  --magi-panel-border: #223040;
+  --magi-text: #fafafa;
+  --magi-text-soft: #a9b4c2;
+  --magi-red: #ff0000;
+  --melchior: #0099cc;
+  --balthasar: #ff9900;
+  --casper: #cc00cc;
+}
+
+body {
+  background: radial-gradient(circle at 15% 10%, #122132 0%, #0e1117 55%, #07090d 100%);
+  color: var(--magi-text);
+  font-family: "Courier New", Consolas, monospace;
+}
+
+section[data-testid="stSidebar"] {
+  background: linear-gradient(180deg, #0f1722 0%, #0b1119 100%);
+  border-right: 1px solid var(--magi-panel-border);
+}
+
+.app-title {
+  font-size: 2.4rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--magi-red);
+  margin-bottom: 0.25rem;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+.app-subtitle {
+  color: var(--magi-text-soft);
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--magi-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--magi-panel-border);
+  padding-bottom: 0.5rem;
+}
+
+.sidebar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--magi-text);
+  margin-bottom: 1rem;
+}
+
+.stButton > button {
+  background: linear-gradient(90deg, var(--magi-red), #cc0000);
+  color: white;
+  border-radius: 8px;
+  padding: 0.7rem 1.4rem;
+  border: 1px solid var(--magi-red);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.stButton > button:hover {
+  filter: brightness(1.2);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+}
+
+.stTextArea textarea,
+.stTextInput input,
+.stSelectbox div,
+.stSlider div {
+  background: var(--magi-panel);
+  border: 1px solid var(--magi-panel-border);
+  color: var(--magi-text);
+}
+
+/* Persona Cards */
+.persona-card {
+  background: var(--magi-panel);
+  border: 1px solid var(--magi-panel-border);
+  border-radius: 12px;
+  padding: 1rem;
+  min-height: 200px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  margin-bottom: 1rem;
+}
+
+.persona-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+}
+
+.persona-content {
+  white-space: pre-wrap;
+  font-family: "Courier New", Consolas, monospace;
+  color: var(--magi-text);
+  background: transparent;
+  border: none;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* MELCHIOR - Cyan */
+.persona-melchior {
+  border-top: 4px solid var(--melchior);
+}
+
+.persona-melchior .persona-title {
+  color: var(--melchior);
+}
+
+/* BALTHASAR - Orange */
+.persona-balthasar {
+  border-top: 4px solid var(--balthasar);
+}
+
+.persona-balthasar .persona-title {
+  color: var(--balthasar);
+}
+
+/* CASPER - Magenta */
+.persona-casper {
+  border-top: 4px solid var(--casper);
+}
+
+.persona-casper .persona-title {
+  color: var(--casper);
+}
+
+/* Decision Banners */
+.decision-banner {
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: 1.2rem;
+}
+
+.decision-approved {
+  background: linear-gradient(135deg, #0b2a22, #0d3d30);
+  color: #00ff88;
+  border: 2px solid #00ff88;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+.decision-denied {
+  background: linear-gradient(135deg, #2a0b0b, #3d0d0d);
+  color: #ff4444;
+  border: 2px solid #ff4444;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+}
+
+.decision-conditional {
+  background: linear-gradient(135deg, #2a1a0b, #3d2a0d);
+  color: #ffcc00;
+  border: 2px solid #ffcc00;
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.3);
+}
+
+.decision-conditions {
+  color: var(--magi-text-soft);
+  margin-top: 0.75rem;
+  font-weight: 600;
+}
+
+/* Expander styling */
+.streamlit-expanderHeader {
+  background: var(--magi-panel);
+  border: 1px solid var(--magi-panel-border);
+  border-radius: 8px;
+}
+
+/* Table styling */
+.stTable {
+  background: var(--magi-panel);
+}
+
+.stTable th {
+  background: var(--magi-bg-alt);
+  color: var(--magi-text);
+}
+
+.stTable td {
+  background: var(--magi-panel);
+  color: var(--magi-text);
+}
