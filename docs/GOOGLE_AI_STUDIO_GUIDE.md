@@ -100,23 +100,21 @@ AI のロジックができたら、Streamlit で画面を作ります。
 
 ```python
 import streamlit as st
-import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 st.title("MAGI System")
 user_input = st.text_area("議題を入力")
 
 if st.button("審議開始"):
-    # 非同期処理で3賢者を並列実行する例（magi-guiの実装イメージ）
-    async def run_magi():
-        melchior_res = await melchior_adapter.generate_content_async(user_input)
-        balthasar_res = await balthasar_adapter.generate_content_async(user_input)
-        casper_res = await casper_adapter.generate_content_async(user_input)
-        st.write("MELCHIOR:", melchior_res)
-        st.write("BALTHASAR:", balthasar_res)
-        st.write("CASPER:", casper_res)
-
-    asyncio.run(run_magi())
-
+    # ThreadPoolExecutorを使って3賢者を並列実行する例
+    with ThreadPoolExecutor() as executor:
+        future_m = executor.submit(melchior_adapter.generate_content, user_input)
+        future_b = executor.submit(balthasar_adapter.generate_content, user_input)
+        future_c = executor.submit(casper_adapter.generate_content, user_input)
+        
+        st.write("MELCHIOR:", future_m.result())
+        st.write("BALTHASAR:", future_b.result())
+        st.write("CASPER:", future_c.result())
 ```
 
 ## 4. Tips
