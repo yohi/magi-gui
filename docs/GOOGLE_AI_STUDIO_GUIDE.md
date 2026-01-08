@@ -76,22 +76,25 @@ from google import genai
 from google.genai import types
 
 class GeminiAdapter:
-    def __init__(self, api_key, system_instruction):
+    def __init__(self, api_key, system_instruction, model_name="gemini-2.0-flash"):
         # クライアントの初期化
         self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-1.5-flash"
+        self.model_name = model_name
         self.config = types.GenerateContentConfig(
             system_instruction=system_instruction,
             temperature=0.7
         )
 
     def generate_content(self, prompt):
-        response = self.client.models.generate_content(
-            model=self.model_name,
-            config=self.config,
-            contents=prompt
-        )
-        return response.text
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                config=self.config,
+                contents=prompt
+            )
+            return response.text
+        except Exception as e:
+            return f"Error: {e}"
 ```
 
 ### Step 5: Streamlit での GUI 化
