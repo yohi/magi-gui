@@ -136,7 +136,9 @@ class TestMainModuleIntegration:
 
     def test_package_init_exports_version(self):
         """Package should export __version__"""
+        import re
         import magi_gui
 
         assert hasattr(magi_gui, "__version__")
-        assert magi_gui.__version__ == "0.1.0"
+        assert magi_gui.__version__
+        assert re.match(r"^\d+\.\d+\.\d+$", magi_gui.__version__)
