@@ -74,7 +74,7 @@ class TestBuildEngine:
 class TestExecuteAsync:
     """Tests for _execute_async function"""
 
-    def test_execute_async_runs_engine(self, mock_config, mock_consensus_result):
+    def test_execute_async_runs_engine(self, mock_consensus_result):
         """_execute_async should run the engine and return result"""
         from magi_gui.app import _execute_async
 
@@ -85,6 +85,7 @@ class TestExecuteAsync:
             result = _execute_async(mock_engine, "Test prompt")
 
             mock_run.assert_called_once()
+            mock_engine.execute.assert_called_once_with("Test prompt")
             assert result == mock_consensus_result
 
 
