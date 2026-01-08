@@ -8,6 +8,7 @@ dependencies = [
     "streamlit>=1.40.0",
     "httpx>=0.27.0",
     "magi",
+    "magi-gemini-orchestrator",
 ]
 
 [project.optional-dependencies]
@@ -34,4 +35,5 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.uv.sources]
 magi = { path = "../magi-core", editable = true }
+magi-gemini-orchestrator = { path = "../magi-gemini-orchestrator", editable = true }
 
