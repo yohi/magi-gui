@@ -1,15 +1,23 @@
 """MAGI GUI - Streamlit application"""
+
 import asyncio
 import html
 import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Dict, Optional, TYPE_CHECKING
+from typing import Dict, Optional, Protocol, TYPE_CHECKING
 
 import streamlit as st
 
 from magi.errors import MagiException
-from magi.models import Attachment, Decision, DebateRound, PersonaType, ThinkingOutput, VoteOutput
+from magi.models import (
+    Attachment,
+    Decision,
+    DebateRound,
+    PersonaType,
+    ThinkingOutput,
+    VoteOutput,
+)
 
 if TYPE_CHECKING:
     from magi.config import Config
@@ -51,17 +59,21 @@ def _load_css() -> None:
     """Load custom CSS styles"""
     css_path = Path(__file__).parent / "assets" / "style.css"
     if css_path.exists():
-        st.markdown(f"<style>{css_path.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
+        st.markdown(
+            f"<style>{css_path.read_text(encoding='utf-8')}</style>",
+            unsafe_allow_html=True,
+        )
 
 
 def _build_engine(config: "Config", streaming_emitter=None) -> "ConsensusEngine":
     """Build ConsensusEngine instance
-    
+
     Args:
         config: Configuration object
         streaming_emitter: Optional streaming emitter for real-time output
     """
     from magi.core.consensus import ConsensusEngine
+
     return ConsensusEngine(config, streaming_emitter=streaming_emitter)
 
 
@@ -199,7 +211,9 @@ def _render_final_decision(decision: Decision, conditions) -> None:
         unsafe_allow_html=True,
     )
     if conditions:
-        st.markdown("<div class='decision-conditions'>Conditions:</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='decision-conditions'>Conditions:</div>", unsafe_allow_html=True
+        )
         for item in conditions:
             st.markdown(f"- {item}")
 
@@ -208,7 +222,7 @@ def _render_download_button(result: "ConsensusResult", prompt: str) -> None:
     """Render report download button"""
     report_content = generate_report(result, prompt)
     filename = generate_filename(prompt)
-    
+
     st.download_button(
         label="📥 Download Report (Markdown)",
         data=report_content,
@@ -242,6 +256,8 @@ def _init_session_state() -> None:
         st.session_state.result = None
     if "error" not in st.session_state:
         st.session_state.error = None
+    if "provider" not in st.session_state:
+        st.session_state.provider = "magi-core"
 
 
 def run_app() -> None:
@@ -264,17 +280,40 @@ def run_app() -> None:
 
     # Sidebar configuration
     with st.sidebar:
-        st.markdown("<div class='sidebar-title'>Configuration</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='sidebar-title'>Configuration</div>", unsafe_allow_html=True
+        )
+
+        provider = st.selectbox(
+            "Provider",
+            options=["magi-core", "gemini-native"],
+            key="provider",
+            help="magi-core: Full ConsensusEngine with streaming. gemini-native: Lightweight google-genai SDK implementation.",
+        )
+
         api_key = st.text_input(
             "Gemini API key",
             type="password",
             value=st.session_state.api_key,
             key="api_key_input",
         )
+
+        if provider == "gemini-native":
+            model_options = ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"]
+            default_model = "gemini-2.0-flash"
+        else:
+            model_options = ["gemini-1.5-pro", "gemini-1.5-flash"]
+            default_model = st.session_state.model
+
+        try:
+            model_index = model_options.index(default_model)
+        except ValueError:
+            model_index = 0
+
         model = st.selectbox(
             "Gemini model",
-            options=["gemini-1.5-pro", "gemini-1.5-flash"],
-            index=0 if st.session_state.model == "gemini-1.5-pro" else 1,
+            options=model_options,
+            index=model_index,
             key="model_select",
         )
         debate_rounds = st.slider(
@@ -284,15 +323,20 @@ def run_app() -> None:
             value=st.session_state.debate_rounds,
             key="debate_rounds_slider",
         )
-        enable_streaming = st.checkbox(
-            "Enable streaming (experimental)",
-            value=st.session_state.enable_streaming,
-            key="streaming_checkbox",
-            help="Display debate output in real-time as it's generated",
-        )
-        
+
+        enable_streaming = False
+        if provider == "magi-core":
+            enable_streaming = st.checkbox(
+                "Enable streaming (experimental)",
+                value=st.session_state.enable_streaming,
+                key="streaming_checkbox",
+                help="Display debate output in real-time as it's generated",
+            )
+
         # File uploader for multimodal input
-        st.markdown("<div class='sidebar-subtitle'>Attachments</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='sidebar-subtitle'>Attachments</div>", unsafe_allow_html=True
+        )
         uploaded_files = st.file_uploader(
             "Attach files (PDF, Images)",
             accept_multiple_files=True,
@@ -303,7 +347,9 @@ def run_app() -> None:
 
     # Main input area
     st.markdown("<div class='section-title'>Input</div>", unsafe_allow_html=True)
-    prompt = st.text_area("Prompt", height=200, placeholder="Describe the decision to evaluate.")
+    prompt = st.text_area(
+        "Prompt", height=200, placeholder="Describe the decision to evaluate."
+    )
     run_clicked = st.button("INITIALIZE", type="primary")
 
     if not run_clicked:
@@ -321,8 +367,6 @@ def run_app() -> None:
     MAX_FILE_SIZE_MB = 10
     attachments = None
     if uploaded_files:
-
-        
         attachments = []
         for f in uploaded_files:
             if f.size > MAX_FILE_SIZE_MB * 1024 * 1024:
@@ -343,85 +387,115 @@ def run_app() -> None:
     endpoint = "https://generativelanguage.googleapis.com"
     _set_gemini_env(api_key, model, endpoint)
 
-    # Import and create Config after env vars are set
-    from magi.config.manager import Config
-    
-    try:
-        config = Config(api_key=api_key, debate_rounds=int(debate_rounds), model=model)
-    except MagiException as exc:
-        st.error(_render_error_message(exc))
-        return
-    except Exception as exc:
-        st.error(f"Configuration error: {exc}")
-        return
+    # Provider-based engine initialization
+    if provider == "gemini-native":
+        from magi_gemini_orchestrator import GeminiNativeClient, MagiOrchestrator
 
-    # Prepare streaming emitter if enabled
-    streaming_emitter = None
-    adapter = None
-    stream_placeholders = {}
-    if enable_streaming:
-        # Create placeholders for each persona
-        st.markdown("<div class='section-title'>Debate (Streaming)</div>", unsafe_allow_html=True)
-        cols = st.columns(3)
-        for idx, persona in enumerate(PERSONA_ORDER):
-            with cols[idx]:
-                st.markdown(
-                    f"<div class='persona-title' style='color: var(--{persona.value.lower()})'>{PERSONA_LABELS[persona]}</div>",
-                    unsafe_allow_html=True,
-                )
-                stream_placeholders[persona] = st.empty()
-        
-        # Clear previous streaming state
-        for persona in PERSONA_ORDER:
-            key = f"stream_{persona.value}"
-            if key in st.session_state:
-                del st.session_state[key]
-            stream_placeholders[persona].empty()
-
-        # Create streaming adapter
-        def on_chunk(chunk):
-            """Handle streaming chunk - update placeholders"""
-            # Find matching persona
-            for persona in PERSONA_ORDER:
-                if chunk.persona == persona.value and chunk.phase == "debate":
-                    placeholder = stream_placeholders.get(persona)
-                    if placeholder:
-                        # Append chunk to existing content
-                        key = f"stream_{persona.value}"
-                        if key not in st.session_state:
-                            st.session_state[key] = []
-                        st.session_state[key].append(chunk.chunk)
-                        combined = "\n\n".join(st.session_state[key])
-                        placeholder.markdown(f"```\n{combined}\n```")
-        
-        adapter = StreamlitStreamingAdapter(on_chunk=on_chunk)
-        streaming_emitter = adapter.create_emitter()
-
-    try:
-        engine = _build_engine(config, streaming_emitter=streaming_emitter)
-    except MagiException as exc:
-        st.error(_render_error_message(exc))
-        return
-    except Exception as exc:
-        st.error(f"Engine initialization error: {exc}")
-        return
-
-    status_placeholder = st.empty()
-    status_placeholder.info("Running consensus engine...")
-
-    with st.spinner("Running..."):
         try:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_execute_async, engine, prompt, adapter, attachments)
-                result = future.result()
+            client = GeminiNativeClient(api_key=api_key)
+            engine = MagiOrchestrator(client)
+        except ValueError as exc:
+            st.error(f"Configuration error: {exc}")
+            return
+        except Exception as exc:
+            st.error(f"Gemini Native initialization error: {exc}")
+            return
+
+        status_placeholder = st.empty()
+        status_placeholder.info("Running MAGI (Gemini Native)...")
+
+        with st.spinner("Running..."):
+            try:
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(
+                        lambda: asyncio.run(
+                            engine.execute(prompt, attachments=attachments)
+                        )
+                    )
+                    result = future.result()
+            except Exception as exc:
+                status_placeholder.empty()
+                st.error(f"Unexpected error: {exc}")
+                return
+    else:
+        from magi.config.manager import Config
+
+        try:
+            config = Config(
+                api_key=api_key, debate_rounds=int(debate_rounds), model=model
+            )
         except MagiException as exc:
-            status_placeholder.empty()
             st.error(_render_error_message(exc))
             return
         except Exception as exc:
-            status_placeholder.empty()
-            st.error(f"Unexpected error: {exc}")
+            st.error(f"Configuration error: {exc}")
             return
+
+        streaming_emitter = None
+        adapter = None
+        stream_placeholders = {}
+        if enable_streaming:
+            st.markdown(
+                "<div class='section-title'>Debate (Streaming)</div>",
+                unsafe_allow_html=True,
+            )
+            cols = st.columns(3)
+            for idx, persona in enumerate(PERSONA_ORDER):
+                with cols[idx]:
+                    st.markdown(
+                        f"<div class='persona-title' style='color: var(--{persona.value.lower()})'>{PERSONA_LABELS[persona]}</div>",
+                        unsafe_allow_html=True,
+                    )
+                    stream_placeholders[persona] = st.empty()
+
+            for persona in PERSONA_ORDER:
+                key = f"stream_{persona.value}"
+                if key in st.session_state:
+                    del st.session_state[key]
+                stream_placeholders[persona].empty()
+
+            def on_chunk(chunk):
+                for persona in PERSONA_ORDER:
+                    if chunk.persona == persona.value and chunk.phase == "debate":
+                        placeholder = stream_placeholders.get(persona)
+                        if placeholder:
+                            key = f"stream_{persona.value}"
+                            if key not in st.session_state:
+                                st.session_state[key] = []
+                            st.session_state[key].append(chunk.chunk)
+                            combined = "\n\n".join(st.session_state[key])
+                            placeholder.markdown(f"```\n{combined}\n```")
+
+            adapter = StreamlitStreamingAdapter(on_chunk=on_chunk)
+            streaming_emitter = adapter.create_emitter()
+
+        try:
+            engine = _build_engine(config, streaming_emitter=streaming_emitter)
+        except MagiException as exc:
+            st.error(_render_error_message(exc))
+            return
+        except Exception as exc:
+            st.error(f"Engine initialization error: {exc}")
+            return
+
+        status_placeholder = st.empty()
+        status_placeholder.info("Running consensus engine...")
+
+        with st.spinner("Running..."):
+            try:
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(
+                        _execute_async, engine, prompt, adapter, attachments
+                    )
+                    result = future.result()
+            except MagiException as exc:
+                status_placeholder.empty()
+                st.error(_render_error_message(exc))
+                return
+            except Exception as exc:
+                status_placeholder.empty()
+                st.error(f"Unexpected error: {exc}")
+                return
 
     status_placeholder.success("Completed.")
 
@@ -446,7 +520,9 @@ def run_app() -> None:
     _render_voting_table(voting_results)
 
     # Render Final Decision
-    st.markdown("<div class='section-title'>Final Decision</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='section-title'>Final Decision</div>", unsafe_allow_html=True
+    )
     _render_final_decision(result.final_decision, result.all_conditions)
 
     # Report download section
