@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from magi.core.consensus import ConsensusEngine
     from magi.models import ConsensusResult
 
+from magi_gui.report import generate_report, generate_filename
+from magi_gui.streaming_adapter import StreamlitStreamingAdapter
+
 PERSONA_ORDER = [PersonaType.MELCHIOR, PersonaType.BALTHASAR, PersonaType.CASPER]
 PERSONA_LABELS = {
     PersonaType.MELCHIOR: "MELCHIOR",
@@ -51,15 +54,32 @@ def _load_css() -> None:
         st.markdown(f"<style>{css_path.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
 
-def _build_engine(config: "Config") -> "ConsensusEngine":
-    """Build ConsensusEngine instance"""
+def _build_engine(config: "Config", streaming_emitter=None) -> "ConsensusEngine":
+    """Build ConsensusEngine instance
+    
+    Args:
+        config: Configuration object
+        streaming_emitter: Optional streaming emitter for real-time output
+    """
     from magi.core.consensus import ConsensusEngine
-    return ConsensusEngine(config)
+    return ConsensusEngine(config, streaming_emitter=streaming_emitter)
 
 
-def _execute_async(engine: "ConsensusEngine", prompt: str) -> "ConsensusResult":
+def _execute_async(
+    engine: "ConsensusEngine",
+    prompt: str,
+    adapter: Optional["StreamlitStreamingAdapter"] = None,
+) -> "ConsensusResult":
     """Execute consensus engine asynchronously"""
-    return asyncio.run(engine.execute(prompt))
+
+    async def _run():
+        try:
+            return await engine.execute(prompt)
+        finally:
+            if adapter:
+                await adapter.close()
+
+    return asyncio.run(_run())
 
 
 def _normalize_thinking(thinking_results) -> Dict[PersonaType, ThinkingOutput]:
@@ -176,6 +196,20 @@ def _render_final_decision(decision: Decision, conditions) -> None:
             st.markdown(f"- {item}")
 
 
+def _render_download_button(result: "ConsensusResult", prompt: str) -> None:
+    """Render report download button"""
+    report_content = generate_report(result, prompt)
+    filename = generate_filename(prompt)
+    
+    st.download_button(
+        label="📥 Download Report (Markdown)",
+        data=report_content,
+        file_name=filename,
+        mime="text/markdown",
+        key="download_report",
+    )
+
+
 def _render_error_message(exc: MagiException) -> str:
     """Format MagiException for display"""
     error = getattr(exc, "error", None)
@@ -194,6 +228,8 @@ def _init_session_state() -> None:
         st.session_state.model = "gemini-1.5-pro"
     if "debate_rounds" not in st.session_state:
         st.session_state.debate_rounds = 3
+    if "enable_streaming" not in st.session_state:
+        st.session_state.enable_streaming = False
     if "result" not in st.session_state:
         st.session_state.result = None
     if "error" not in st.session_state:
@@ -240,6 +276,12 @@ def run_app() -> None:
             value=st.session_state.debate_rounds,
             key="debate_rounds_slider",
         )
+        enable_streaming = st.checkbox(
+            "Enable streaming (experimental)",
+            value=st.session_state.enable_streaming,
+            key="streaming_checkbox",
+            help="Display debate output in real-time as it's generated",
+        )
 
     # Main input area
     st.markdown("<div class='section-title'>Input</div>", unsafe_allow_html=True)
@@ -273,8 +315,50 @@ def run_app() -> None:
         st.error(f"Configuration error: {exc}")
         return
 
+    # Prepare streaming emitter if enabled
+    streaming_emitter = None
+    adapter = None
+    stream_placeholders = {}
+    if enable_streaming:
+        # Create placeholders for each persona
+        st.markdown("<div class='section-title'>Debate (Streaming)</div>", unsafe_allow_html=True)
+        cols = st.columns(3)
+        for idx, persona in enumerate(PERSONA_ORDER):
+            with cols[idx]:
+                st.markdown(
+                    f"<div class='persona-title' style='color: var(--{persona.value.lower()})'>{PERSONA_LABELS[persona]}</div>",
+                    unsafe_allow_html=True,
+                )
+                stream_placeholders[persona] = st.empty()
+        
+        # Clear previous streaming state
+        for persona in PERSONA_ORDER:
+            key = f"stream_{persona.value}"
+            if key in st.session_state:
+                del st.session_state[key]
+            stream_placeholders[persona].empty()
+
+        # Create streaming adapter
+        def on_chunk(chunk):
+            """Handle streaming chunk - update placeholders"""
+            # Find matching persona
+            for persona in PERSONA_ORDER:
+                if chunk.persona == persona.value and chunk.phase == "debate":
+                    placeholder = stream_placeholders.get(persona)
+                    if placeholder:
+                        # Append chunk to existing content
+                        key = f"stream_{persona.value}"
+                        if key not in st.session_state:
+                            st.session_state[key] = []
+                        st.session_state[key].append(chunk.chunk)
+                        combined = "\n\n".join(st.session_state[key])
+                        placeholder.markdown(f"```\n{combined}\n```")
+        
+        adapter = StreamlitStreamingAdapter(on_chunk=on_chunk)
+        streaming_emitter = adapter.create_emitter()
+
     try:
-        engine = _build_engine(config)
+        engine = _build_engine(config, streaming_emitter=streaming_emitter)
     except MagiException as exc:
         st.error(_render_error_message(exc))
         return
@@ -288,7 +372,7 @@ def run_app() -> None:
     with st.spinner("Running..."):
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_execute_async, engine, prompt)
+                future = executor.submit(_execute_async, engine, prompt, adapter)
                 result = future.result()
         except MagiException as exc:
             status_placeholder.empty()
@@ -324,6 +408,10 @@ def run_app() -> None:
     # Render Final Decision
     st.markdown("<div class='section-title'>Final Decision</div>", unsafe_allow_html=True)
     _render_final_decision(result.final_decision, result.all_conditions)
+
+    # Report download section
+    st.markdown("<div class='section-title'>Export</div>", unsafe_allow_html=True)
+    _render_download_button(result, prompt)
 
 
 # Streamlit entry point
