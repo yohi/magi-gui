@@ -77,16 +77,44 @@ class TestExecuteAsync:
     def test_execute_async_runs_engine(self, mock_consensus_result):
         """_execute_async should run the engine and return result"""
         from magi_gui.app import _execute_async
+        import asyncio
 
         mock_engine = MagicMock()
-        mock_engine.execute = MagicMock(return_value=mock_consensus_result)
+        
+        # Define async mock for execute
+        async def mock_execute(*args, **kwargs):
+            return mock_consensus_result
+            
+        mock_engine.execute = MagicMock(side_effect=mock_execute)
 
-        with patch("asyncio.run", return_value=mock_consensus_result) as mock_run:
-            result = _execute_async(mock_engine, "Test prompt")
+        # We run the real _execute_async which calls asyncio.run
+        result = _execute_async(mock_engine, "Test prompt")
 
-            mock_run.assert_called_once()
-            mock_engine.execute.assert_called_once_with("Test prompt")
-            assert result == mock_consensus_result
+        mock_engine.execute.assert_called_once_with("Test prompt")
+        assert result == mock_consensus_result
+
+    def test_execute_async_closes_adapter(self, mock_consensus_result):
+        """_execute_async should close adapter if provided"""
+        from magi_gui.app import _execute_async
+        import asyncio
+
+        mock_engine = MagicMock()
+        
+        async def mock_execute(*args, **kwargs):
+            return mock_consensus_result
+            
+        mock_engine.execute = MagicMock(side_effect=mock_execute)
+
+        mock_adapter = MagicMock()
+        
+        async def mock_close():
+            pass
+            
+        mock_adapter.close = MagicMock(side_effect=mock_close)
+
+        _execute_async(mock_engine, "Test prompt", adapter=mock_adapter)
+
+        mock_adapter.close.assert_called_once()
 
 
 class TestCssFileExists:

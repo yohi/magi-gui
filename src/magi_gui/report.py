@@ -5,6 +5,7 @@ ConsensusResult objects.
 """
 from datetime import datetime
 import re
+import unicodedata
 from typing import Dict, List, Optional
 
 from magi.models import (
@@ -207,17 +208,35 @@ def generate_filename(prompt: str, timestamp: Optional[datetime] = None) -> str:
         timestamp: Optional timestamp, defaults to now
         
     Returns:
-        Filename string like 'magi-report-20260108-155800.md'
+        Filename string like 'magi-report-日本語テスト-20260108-155800.md'
     """
     if timestamp is None:
         timestamp = datetime.now()
 
     # Create slug from prompt
-    # 1. Lowercase and normalize
-    slug = prompt.lower().strip()
-    # 2. Replace non-alphanumeric with hyphens
-    slug = re.sub(r'[^a-z0-9]+', '-', slug).strip('-')
-    # 3. Truncate
+    # 1. Normalize Unicode (NFC - canonical composition)
+    # Using NFC instead of NFKD to preserve composed characters (e.g., Japanese dakuten)
+    normalized = unicodedata.normalize('NFC', prompt)
+    
+    # 2. Build slug by keeping letters and numbers
+    slug_chars = []
+    prev_was_separator = True  # Track to avoid multiple hyphens
+    
+    for char in normalized:
+        category = unicodedata.category(char)
+        # Keep letter (L*) or number (N*) categories
+        if category.startswith('L') or category.startswith('N'):
+            slug_chars.append(char.lower())
+            prev_was_separator = False
+        # Treat whitespace and other chars as separators
+        elif not prev_was_separator and slug_chars:
+            slug_chars.append('-')
+            prev_was_separator = True
+    
+    # Join and clean up
+    slug = ''.join(slug_chars).strip('-')
+    
+    # 3. Truncate (counting characters, not bytes)
     if len(slug) > 50:
         slug = slug[:50].rstrip('-')
         

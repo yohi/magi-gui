@@ -60,7 +60,7 @@ class TestReportGenerator:
         assert "My test prompt" in section
 
     def test_thinking_section_includes_all_personas(
-        self, mock_consensus_result, mock_thinking_results
+        self, mock_consensus_result
     ):
         """_thinking_section() should include all three personas"""
         generator = ReportGenerator(mock_consensus_result, "Test prompt")
@@ -238,4 +238,61 @@ class TestGenerateFilename:
         # 50 chars limit
         assert "a" * 50 in filename
         assert "a" * 51 not in filename
+
+    def test_filename_preserves_japanese_characters(self):
+        """generate_filename() should preserve Japanese characters"""
+        filename = generate_filename("日本語テスト")
+        assert "日本語テスト" in filename
+
+    def test_filename_preserves_mixed_unicode_ascii(self):
+        """generate_filename() should preserve mixed Unicode and ASCII"""
+        filename = generate_filename("Hello 世界 Test")
+        assert "hello-世界-test" in filename
+
+    def test_filename_handles_chinese_characters(self):
+        """generate_filename() should preserve Chinese characters"""
+        filename = generate_filename("中文测试")
+        assert "中文测试" in filename
+
+    def test_filename_handles_cyrillic_characters(self):
+        """generate_filename() should preserve Cyrillic characters"""
+        filename = generate_filename("Привет Мир")
+        assert "привет-мир" in filename
+
+    def test_filename_removes_emoji_and_symbols(self):
+        """generate_filename() should remove emoji but keep letters"""
+        filename = generate_filename("Hello 👋 World 🌍")
+        assert "hello-world" in filename
+        assert "👋" not in filename
+        assert "🌍" not in filename
+
+    def test_filename_handles_accented_characters(self):
+        """generate_filename() should normalize accented characters"""
+        filename = generate_filename("Café résumé")
+        # NFC normalization preserves composed accented characters
+        # So "é" is kept as "é" in lowercase
+        assert "café" in filename
+        assert "résumé" in filename
+
+    def test_filename_collapses_multiple_separators(self):
+        """generate_filename() should collapse multiple separators into one hyphen"""
+        filename = generate_filename("Hello   @@@   World")
+        assert "hello-world" in filename
+        # Should not have multiple consecutive hyphens
+        assert "--" not in filename
+
+    def test_filename_handles_numbers_in_unicode(self):
+        """generate_filename() should preserve numbers in various scripts"""
+        filename = generate_filename("Test 123 テスト")
+        assert "test-123-テスト" in filename
+        assert "123" in filename
+
+    def test_filename_empty_after_sanitization(self):
+        """generate_filename() should handle prompts that become empty after sanitization"""
+        filename = generate_filename("@#$%^&*()")
+        # Should only have prefix and timestamp, no slug
+        assert filename.startswith("magi-report-")
+        # Should not have consecutive hyphens before timestamp
+        import re
+        assert not re.search(r"--", filename)
 

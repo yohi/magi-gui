@@ -65,9 +65,21 @@ def _build_engine(config: "Config", streaming_emitter=None) -> "ConsensusEngine"
     return ConsensusEngine(config, streaming_emitter=streaming_emitter)
 
 
-def _execute_async(engine: "ConsensusEngine", prompt: str) -> "ConsensusResult":
+def _execute_async(
+    engine: "ConsensusEngine",
+    prompt: str,
+    adapter: Optional["StreamlitStreamingAdapter"] = None,
+) -> "ConsensusResult":
     """Execute consensus engine asynchronously"""
-    return asyncio.run(engine.execute(prompt))
+
+    async def _run():
+        try:
+            return await engine.execute(prompt)
+        finally:
+            if adapter:
+                await adapter.close()
+
+    return asyncio.run(_run())
 
 
 def _normalize_thinking(thinking_results) -> Dict[PersonaType, ThinkingOutput]:
@@ -305,6 +317,7 @@ def run_app() -> None:
 
     # Prepare streaming emitter if enabled
     streaming_emitter = None
+    adapter = None
     stream_placeholders = {}
     if enable_streaming:
         # Create placeholders for each persona
@@ -359,7 +372,7 @@ def run_app() -> None:
     with st.spinner("Running..."):
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_execute_async, engine, prompt)
+                future = executor.submit(_execute_async, engine, prompt, adapter)
                 result = future.result()
         except MagiException as exc:
             status_placeholder.empty()
