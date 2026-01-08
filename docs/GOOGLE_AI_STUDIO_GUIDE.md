@@ -43,7 +43,7 @@ MAGI システムのような「役割を持ったAI」を作るには、**Syste
         感情を排し、データと事実に基づいた判断を行ってください。
         ...
         ```
-3.  画面右側の **Run settings** でモデル (Gemini 1.5 Flash, Gemini 1.5 Pro 等) を選択し、Temperature (創造性) を調整します。
+3.  画面右側の **Run settings** でモデル (Gemini 1.5 Flash, Gemini 1.5 Pro, Gemini 2.0 等) を選択し、Temperature (創造性) を調整します。
 4.  下部の User 入力欄にテスト用の議題 (例:「人類補完計画について」) を入力し、Run ボタンで応答を確認します。
 
 ### Step 3: Python コードへのエクスポート
