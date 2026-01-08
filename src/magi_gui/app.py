@@ -287,8 +287,7 @@ def run_app() -> None:
         provider = st.selectbox(
             "Provider",
             options=["magi-core", "gemini-native"],
-            index=0 if st.session_state.provider == "magi-core" else 1,
-            key="provider_select",
+            key="provider",
             help="magi-core: Full ConsensusEngine with streaming. gemini-native: Lightweight google-genai SDK implementation.",
         )
 
@@ -390,11 +389,14 @@ def run_app() -> None:
 
     # Provider-based engine initialization
     if provider == "gemini-native":
-        from magi_orchestrator import GeminiNativeClient, MagiOrchestrator
+        from magi_gemini_orchestrator import GeminiNativeClient, MagiOrchestrator
 
         try:
             client = GeminiNativeClient(api_key=api_key)
             engine = MagiOrchestrator(client)
+        except ValueError as exc:
+            st.error(f"Configuration error: {exc}")
+            return
         except Exception as exc:
             st.error(f"Gemini Native initialization error: {exc}")
             return

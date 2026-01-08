@@ -105,6 +105,7 @@ class GeminiAdapter:
 
 ```python
 import streamlit as st
+import asyncio
 # 上記のGeminiAdapterクラスが定義されている前提
 
 def main():
@@ -130,17 +131,22 @@ def main():
 
     user_input = st.text_area("議題を入力", height=150)
     
+    async def run_sages(prompt):
+        # 3賢者を並列実行
+        return await asyncio.gather(
+            melchior.generate_content_async(prompt),
+            balthasar.generate_content_async(prompt),
+            casper.generate_content_async(prompt)
+        )
+
     if st.button("審議開始"):
         if not user_input:
             st.error("議題を入力してください")
             return
 
         with st.spinner("MAGI System 審議中..."):
-            # 3賢者を順次実行
-            result_m = melchior.generate_content(user_input)
-            result_b = balthasar.generate_content(user_input)
-            result_c = casper.generate_content(user_input)
-            results = [result_m, result_b, result_c]
+            # 非同期実行で並列処理
+            results = asyncio.run(run_sages(user_input))
             
             # 結果表示
             col1, col2, col3 = st.columns(3)
