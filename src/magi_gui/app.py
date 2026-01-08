@@ -198,8 +198,6 @@ def _init_session_state() -> None:
         st.session_state.result = None
     if "error" not in st.session_state:
         st.session_state.error = None
-    if "is_running" not in st.session_state:
-        st.session_state.is_running = False
 
 
 def run_app() -> None:
@@ -330,6 +328,4 @@ def run_app() -> None:
 
 # Streamlit entry point
 if __name__ == "__main__":
-    run_app()
-else:
     run_app()
